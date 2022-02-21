@@ -1,20 +1,9 @@
 #!/usr/bin/env bash
 
 #
-# Copyright (c) 2020 Ryan Richard
-#
-# An example of using hikvision-download-assistant to download
-# several days worth of videos and photos, organizing them into
-# directories per day, and presenting a simple UI for browsing
-# and viewing them.
+# Version adapted from 2020 Ryan Richard
 #
 # Note: Requires ffmpeg and jq
-#
-# Usage: HIKVISION_PASSWORD=mypass download_days <number_of_previous_days_to_download> <download_directory>
-# When the argument is 0, downloads only today's photos and videos up to now.
-# When the argument is N, downloads today's photos and videos up to now plus the previous N days.
-#
-# Assumes that you have installed this script into the same directory as the hikvision-download-assisant.jar file.
 #
 # This script is safe to run multiple times for the same output directory. It will retain your previous files
 # and will only download photos and videos that were not previously downloaded.
@@ -23,17 +12,13 @@
 set -eo pipefail
 
 # The user should set these environment variables or else it will use these defaults
-: "${HIKVISION_USERNAME:=admin}"
-: "${HIKVISION_HOST:=192.168.1.64}"
+: "${HIKVISION_USERNAME:=Wyndhurst}"
+: "${HIKVISION_PASSWORD:=Moocow21}"
+: "${HIKVISION_HOST:=10.70.66.6:8081}"
 
 # Get the command-line arguments
 NUM_DAYS=$1
 DOWNLOAD_DIR=$2
-
-if [[ -z "$HIKVISION_PASSWORD" ]]; then
-  echo "ERROR: Please use \$HIKVISION_PASSWORD to set your password." >&2
-  exit 1
-fi
 
 if [[ -z "$NUM_DAYS" ]] || ! [[ $NUM_DAYS =~ ^[0-9]+$ ]]; then
   echo "ERROR: Please use number of days to download as the first argument." >&2
@@ -56,14 +41,14 @@ mkdir -p "$DOWNLOAD_DIR"
 for DAYS_AGO in $(seq 0 "$NUM_DAYS"); do
 
   if [[ $DAYS_AGO -eq 0 ]]; then
-    from="today at 12:00:00 AM"
+    from="10 seconds ago"
     to="now"
   else
     from="$DAYS_AGO days ago at 12:00:00 AM"
     to="$DAYS_AGO days ago at 11:59:59 PM"
   fi
 
-  SEARCH_RESULT=$(java -jar "$SCRIPT_DIR/hikvision-download-assistant.jar" \
+  SEARCH_RESULT=$(java -jar "$SCRIPT_DIR/importer.jar" \
     "$HIKVISION_HOST" "$HIKVISION_USERNAME" "$HIKVISION_PASSWORD" \
     --from-time "$from" --to-time "$to" \
     --output json --quiet)
@@ -83,12 +68,14 @@ for DAYS_AGO in $(seq 0 "$NUM_DAYS"); do
 
       # For videos, download and transcode
       FIXED_FILENAME="$(dirname "$DOWNLOAD_FILENAME")/$(basename "$DOWNLOAD_FILENAME" .mp4).fixed.mp4"
+      SEGMENT_FILENAME="$(dirname "$DOWNLOAD_FILENAME")/$(basename "$DOWNLOAD_FILENAME" .mp4)+%05d.mp4"
 
       if ! [[ -f $FIXED_FILENAME ]]; then
         echo "Downloading $DOWNLOAD_FILENAME"
         eval "$CURL_COMMAND -s"
         echo "Transcoding $DOWNLOAD_FILENAME"
         ffmpeg -err_detect ignore_err -i "$DOWNLOAD_FILENAME" -c copy "$FIXED_FILENAME" -hide_banner -loglevel warning
+        ffmpeg -err_detect ignore_err -i "$FIXED_FILENAME" -c copy -map 0 -segment_time 00:01:00 -f segment -reset_timestamps 1 "$SEGMENT_FILENAME"
         rm "$DOWNLOAD_FILENAME"
       else
         echo "Already downloaded $DOWNLOAD_FILENAME"
