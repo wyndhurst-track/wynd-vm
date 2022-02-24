@@ -67,14 +67,19 @@ for DAYS_AGO in $(seq 0 "$NUM_DAYS"); do
     if [[ $DOWNLOAD_FILENAME == *mp4 ]]; then
 
       # For videos, download and transcode
-      FIXED_FILENAME="$(dirname "$DOWNLOAD_FILENAME")/$(basename "$DOWNLOAD_FILENAME" .mp4).fixed.mp4"
-      SEGMENT_FILENAME="$(dirname "$DOWNLOAD_FILENAME")/$(basename "$DOWNLOAD_FILENAME" .mp4)+%05d.mp4"
+      FIXED_FILENAME="$(basename "$DOWNLOAD_FILENAME" .mp4).fixed.mp4"
+      SEGMENT_FILENAME="$(basename "$DOWNLOAD_FILENAME" .mp4)+%05d.avi"
+
+      # SEGMENT_FOLDER="$(dirname "$DOWNLOAD_FILENAME")/frames/$(basename "$DOWNLOAD_FILENAME" .mp4)"
+      # mkdir -p "$SEGMENT_FOLDER"
+      # SEGMENT_FILENAME="$(dirname "$DOWNLOAD_FILENAME")/frames/$(basename "$DOWNLOAD_FILENAME" .mp4)+%05d.jpg"
 
       if ! [[ -f $FIXED_FILENAME ]]; then
         echo "Downloading $DOWNLOAD_FILENAME"
         eval "$CURL_COMMAND -s"
         echo "Transcoding $DOWNLOAD_FILENAME"
         ffmpeg -err_detect ignore_err -i "$DOWNLOAD_FILENAME" -c copy "$FIXED_FILENAME" -hide_banner -loglevel warning
+        # ffmpeg -err_detect ignore_err -i "$FIXED_FILENAME" -vf fps=1/20 "$SEGMENT_FILENAME" -hide_banner -loglevel warning
         ffmpeg -err_detect ignore_err -i "$FIXED_FILENAME" -c copy -map 0 -segment_time 00:01:00 -f segment -reset_timestamps 1 "$SEGMENT_FILENAME"
         rm "$DOWNLOAD_FILENAME"
       else
@@ -93,71 +98,11 @@ for DAYS_AGO in $(seq 0 "$NUM_DAYS"); do
     fi
 
   done # done downloading all files in the day directory
-
-  echo "Making $INDEX_FILENAME for directory $DAY_DIR"
-  echo '<a href="../'"$INDEX_FILENAME"'">Home</a>' >"$INDEX_FILENAME"
-  echo "<h1>Downloaded photos and videos for $RESULT_DATE</h1>" >>"$INDEX_FILENAME"
-  FILE_ARRAY=($(find "$(pwd)" -maxdepth 1 \( -name "*.fixed.mp4" -o -name "*.jpeg" \) | sort))
-  FILE_COUNT=${#FILE_ARRAY[@]}
-  for ((i = 0; i < FILE_COUNT; i++)); do
-    CURRENT_FILE=${FILE_ARRAY[$i]}
-    CURRENT_FILE_BASENAME=$(basename "$CURRENT_FILE")
-    CURRENT_FILE_HTML="${CURRENT_FILE_BASENAME}.html"
-
-    PREVIOUS_FILE=""
-    if ((i > 0)); then
-      PREVIOUS_FILE=${FILE_ARRAY[$i - 1]}
-      PREVIOUS_FILE_BASENAME=$(basename "$PREVIOUS_FILE")
-    fi
-
-    NEXT_FILE=""
-    if ((i < FILE_COUNT - 1)); then
-      NEXT_FILE=${FILE_ARRAY[$i + 1]}
-      NEXT_FILE_BASENAME=$(basename "$NEXT_FILE")
-    fi
-
-    echo '<a href="'"$INDEX_FILENAME"'">Back to day</a>' >"$CURRENT_FILE_HTML"
-    if [[ -n "$PREVIOUS_FILE" ]]; then
-      echo ' | <a href="'"$PREVIOUS_FILE_BASENAME"'.html">Previous</a>' >>"$CURRENT_FILE_HTML"
-    else
-      echo ' | Previous' >>"$CURRENT_FILE_HTML"
-    fi
-    if [[ -n "$NEXT_FILE" ]]; then
-      echo ' | <a href="'"$NEXT_FILE_BASENAME"'.html">Next</a>' >>"$CURRENT_FILE_HTML"
-    else
-      echo ' | Next' >>"$CURRENT_FILE_HTML"
-    fi
-    echo '<h1>'"$CURRENT_FILE_BASENAME"'</h1>' >>"$CURRENT_FILE_HTML"
-
-    if [[ "$CURRENT_FILE" == *mp4 ]]; then
-      echo '<video autoplay controls width="100%" title="'"$CURRENT_FILE_BASENAME"'" src="'"$CURRENT_FILE_BASENAME"'">Cannot show video</video>' >>"$CURRENT_FILE_HTML"
-      echo '<a href="'"$CURRENT_FILE_HTML"'"><video controls width="14%" preload="none" title="'"$CURRENT_FILE_BASENAME"'" src="'"$CURRENT_FILE_BASENAME"'">Cannot show video</video></a>' >>"$INDEX_FILENAME"
-    else
-      echo '<a href="'"$CURRENT_FILE_BASENAME"'"><img src="'"$CURRENT_FILE_BASENAME"'" width="100%"/></a>' >>"$CURRENT_FILE_HTML"
-      echo '<a href="'"$CURRENT_FILE_HTML"'"><img width="14%" src="'"$CURRENT_FILE_BASENAME"'" title="'"$CURRENT_FILE_BASENAME"'"/></a>' >>"$INDEX_FILENAME"
-    fi
-  done
-
-  if [[ FILE_COUNT -eq 0 ]]; then
-    echo "<h1>No downloaded photos or videos for $RESULT_DATE</h1>" >"$INDEX_FILENAME"
-  fi
-
   popd >/dev/null
-
 done
 
-echo "Making $INDEX_FILENAME for directory $DOWNLOAD_DIR"
-pushd "$DOWNLOAD_DIR" >/dev/null
-echo '<h1>Downloaded photos and videos by day</h1>' >"$INDEX_FILENAME"
-echo '<h3>Powered by <a href="https://github.com/cfryanr/hikvision-download-assistant">hikvision-download-assistant</a></h3><ul>' >>"$INDEX_FILENAME"
-for DATE_DIR in $(find ./* -maxdepth 1 -type d | sort); do
-  DATE_DIR=$(basename "$DATE_DIR")
-  echo '<li><a href="'"$DATE_DIR"'/'"$INDEX_FILENAME"'">'"$(basename "$DATE_DIR")"'</a></li>' >>"$INDEX_FILENAME"
-done
-echo '</ul>' >>"$INDEX_FILENAME"
+echo "Outputting frames"
+python3 Cows2021/make_data/1video_to_frames.py
+echo "Building JSON"
+python3 Cows2021/make_data/2output_dt_json.py
 
-echo "Done. Wrote top-level index file:$(pwd)/$INDEX_FILENAME"
-
-if [[ $(uname) == "Darwin" ]]; then
-  open $INDEX_FILENAME
-fi
