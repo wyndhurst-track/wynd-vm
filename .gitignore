@@ -1,0 +1,32 @@
+importer/target/
+importer/.mvn
+importer/!**/src/main/**
+importer/!**/src/test/**
+importer/src/main/resources/cert.p12
+importer/.DS_Store
+
+### STS ###
+importer/.apt_generated
+importer/.classpath
+importer/.factorypath
+importer/.project
+importer/.settings
+importer/.springBeans
+importer/.sts4-cache
+
+### IntelliJ IDEA ###
+importer/.idea
+importer/*.iws
+importer/*.iml
+importer/*.ipr
+
+### NetBeans ###
+importer/nbproject/private/
+importer/nbbuild/
+importer/dist/
+importer/nbdist/
+importer/.nb-gradle/
+importerbuild/
+
+### VS Code ###
+importer/.vscode/

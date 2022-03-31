@@ -12,9 +12,9 @@
 set -eo pipefail
 
 # The user should set these environment variables or else it will use these defaults
-: "${HIKVISION_USERNAME:=Wyndhurst}"
-: "${HIKVISION_PASSWORD:=Moocow21}"
-: "${HIKVISION_HOST:=10.70.66.6:8081}"
+# : "${HIKVISION_USERNAME:=}"
+# : "${HIKVISION_PASSWORD:=}"
+# : "${HIKVISION_HOST:=}"
 
 # Get the command-line arguments
 NUM_DAYS=$1
@@ -101,8 +101,8 @@ for DAYS_AGO in $(seq 0 "$NUM_DAYS"); do
   popd >/dev/null
 done
 
-echo "Outputting frames"
-python3 Cows2021/make_data/1video_to_frames.py
-echo "Building JSON"
-python3 Cows2021/make_data/2output_dt_json.py
+# echo "Outputting frames"
+# python3 Cows2021/make_data/1video_to_frames.py
+# echo "Building JSON"
+# python3 Cows2021/make_data/2output_dt_json.py
 
